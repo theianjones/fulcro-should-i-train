@@ -2,10 +2,20 @@
   "name": "minimalist-fulcro-template-backendless",
   "version": "1.0.0",
   "author": "Jakub Holý <jakubholy@jakubholy.net> (https://blog.jakubholy.net)",
+  "scripts": {
+    "dev": "bb run"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^1.28.5",
+    "@tailwindcss/forms": "^0.4.0",
+    "autoprefixer": "^10.4.0",
+    "cross-env": "^7.0.3",
+    "cssnano": "^5.0.14",
+    "postcss": "^8.4.5",
+    "postcss-cli": "^9.1.0",
     "react": "^17.0.1",
-    "react-dom": "^17.0.1"
+    "react-dom": "^17.0.1",
+    "tailwindcss": "^3.0.7"
   },
   "devDependencies": {
     "shadow-cljs": "2.15.5"

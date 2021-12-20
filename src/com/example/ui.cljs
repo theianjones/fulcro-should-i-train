@@ -19,10 +19,10 @@
    :ident (fn [] [:component/id :header])
    :initial-state {}}
   (let [load-user (get props [df/marker-table :load-progress])]
-    (div {:style {:display "flex" :justifyContent "space-between" :alignItems "center"}}
+    (div {:className "flex justify-between items-center"}
          (div "Should I Train?")
          (when-not load-user
-           (div {:style {:display "flex" :justifyContent "flex-end"}}
+           (div {:className "flex justify-end"}
                 (when (:user/authenticated? user) (div {:style {:display "flex"}}
                                                        (p {:style {:paddingRight 24}} (str "Hello " (or (:user/name user) "from the ui/Root component") "!"))
                                                        (button {:onClick #(on-signout)} "Sign out")))
