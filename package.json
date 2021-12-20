@@ -1,0 +1,13 @@
+{
+  "name": "minimalist-fulcro-template-backendless",
+  "version": "1.0.0",
+  "author": "Jakub Holý <jakubholy@jakubholy.net> (https://blog.jakubholy.net)",
+  "dependencies": {
+    "@supabase/supabase-js": "^1.28.5",
+    "react": "^17.0.1",
+    "react-dom": "^17.0.1"
+  },
+  "devDependencies": {
+    "shadow-cljs": "2.15.5"
+  }
+}
