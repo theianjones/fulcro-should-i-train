@@ -57,12 +57,14 @@
 
 (pc/defresolver quiz-by-id [_ {id :quiz/id}]
   {::pc/input #{:quiz/id}
-   ::pc/output [:quiz/id :quiz/version
+   ::pc/output [:quiz/id :quiz/version :quiz/label
                 {:quiz/questions [:question/id :question/label
                                   {:question/options [:option/label :option/value]}]}]}
-  (tap> (quiz-by-id* id))
-  (prn "wow nice" id (quiz-by-id* id))
   (quiz-by-id* id))
+
+(pc/defresolver readiness-quiz [_ _]
+  {::pc/output [{:readiness-quiz [:quiz/id]}]}
+  {:readiness-quiz {:quiz/id "375623e0-92dd-4815-b507-4d577a55f37c"}})
 
 (pc/defresolver current-user
   [env _]
@@ -88,7 +90,7 @@
 
 (def my-resolvers-and-mutations
   "Add any resolvers you make to this list (and reload to re-create the parser)"
-  [index-explorer create-random-thing i-fail person current-user user-authenticated? quiz-by-id])
+  [index-explorer create-random-thing i-fail person current-user user-authenticated? quiz-by-id readiness-quiz])
 
 (defn new-parser
   "Create a new Pathom parser with the necessary settings"

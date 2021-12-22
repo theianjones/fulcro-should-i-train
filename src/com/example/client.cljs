@@ -12,6 +12,9 @@
   (df/load! app :current-user ui/User {:target (targeting/replace-at [:root/user])
                                        :marker :load-user}))
 
+(defn load-readiness-quiz! [app]
+  (df/load! app :readiness-quiz ui/Quiz {:target (targeting/replace-at [:quiz])}))
+
 (defn ^:export init
   "Called by shadow-cljs upon initialization, see shadow-cljs.edn"
   []
@@ -22,7 +25,8 @@
               (app/root-class app)
               "app"
               {:initialize-state? false})
-  (load-user! app))
+  (load-user! app)
+  (load-readiness-quiz! app))
 
 (defn ^:export refresh
   "Called by shadow-cljs upon hot code reload, see shadow-cljs.edn"
@@ -30,4 +34,5 @@
   (println "Refreshing after a hot code reload...")
   (comp/refresh-dynamic-queries! app)
   (app/mount! app (app/root-class app) "app")
-  (load-user! app))
+  (load-user! app)
+  (load-readiness-quiz! app))
