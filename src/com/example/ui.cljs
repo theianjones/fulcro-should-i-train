@@ -33,14 +33,12 @@
 
 (def ui-header (comp/factory Header))
 
-(defn field [{:keys [label valid? error-message input-class options] :as props}]
+(defn field [{:keys [label valid? error-message input-class id] :as props}]
   (let [input-props (-> props
-                        (assoc :name label)
                         (dissoc :label :valid? :error-message :input-class :options))]
     (div :.ui.field
-         (dom/label {:htmlFor label} label)
-         (input-class input-props
-                      (when options (map #(option {:value (:value %) :key (:value %)} (:label %)) options)))
+         (dom/label {:htmlFor id} label)
+         (input-class input-props)
          (dom/div :.ui.error.message {:classes [(when valid? "hidden")]}
                   error-message))))
 
@@ -48,35 +46,58 @@
            :questions
            first))
 
-(defsc ReadinessForm [this {:readiness/keys [trained]}]
-  {:query [:readiness/trained fs/form-config-join]
-   :ident (fn [] readiness-ident)
-   :initial-state (fn [_]
-                    (fs/add-form-config ReadinessForm {:readiness/trained ""}))
-   :form-fields #{:readiness/trained}
-   :componentDidMount (fn [this]
-                        (comp/transact! this [(clear-readiness-form nil)]))}
-  (div
-   (h3 "Readiness Form")
-   (field {:input-class   select
-           :options       (:options t)
-           :label         (:value t)
-           :value         (or trained (-> t
-                                          :options
-                                          first
-                                          :score))
-           :autoComplete  "off"
-           :onChange      #(m/set-integer! this :readiness/trained :event %)})))
+#_[{[:quiz/id "375623e0-92dd-4815-b507-4d577a55f37c"]
+    [:quiz/version :quiz/id :quiz/label
+     {:quiz/questions [:question/id :question/label
+                       {:question/options [:option/label :option/value]}]}]}]
 
-(def ui-readiness-form (comp/factory ReadinessForm))
+(defsc Quiz [this {:quiz/keys [version id label questions]}]
+  {:query [:quiz/version :quiz/id :quiz/label
+           {:quiz/questions [:question/id
+                             :question/label
+                             {:question/options [:option/label
+                                                 :option/value]}]}
+           fs/form-config-join]
+   :ident (fn [] [:quiz/id id])
+   :initial-state {}}
+  (div
+   (div :.flex.items-center.gap-1.mb3
+        (h2 :.text-lg.text-zinc-800 label)
+        (p :.text-gray-500 "v" version))
+   (map (fn [q]
+          (div {:key  (:question/id q)}
+               (h2 (:question/label q))
+               (map (fn [o]
+                      (field {:input-class dom/input
+                              :name (:question/id q)
+                              :label (:option/label o)
+                              :value (:option/value o)
+                              :id (:option/value o)
+                              :key (:option/value o)
+                              :type "radio"
+                              :autoComplete "off"}))
+                    (:question/options q))))
+        questions)
+
+   #_(field {:input-class   select
+             :options       (:options t)
+             :label         (:value t)
+             :value         (or trained (-> t
+                                            :options
+                                            first
+                                            :score))
+             :autoComplete  "off"
+             :onChange      #(m/set-integer! this :readiness/trained :event %)})))
+
+(def ui-quiz (comp/factory Quiz {:keyfn :quiz/id}))
 
 (defsc Root [this {:root/keys [user] :as props}]
   {:query [[df/marker-table :load-progress] :new-thing
            {:root/user (comp/get-query User)}
            [df/marker-table :load-user]
            {:header (comp/get-query Header)}
-           {:readiness-form (comp/get-query ReadinessForm)}]
+           {:quiz (comp/get-query Quiz)}]
    :initial-state {:root/user {} :header {}}}
-  (div
-   (ui-header (comp/computed (:header props) {:on-signout #(comp/transact! this [(mut/delete-root-user nil)]) :user user}))
-   (ui-readiness-form (:readiness-form props))))
+  (div :.container.mx-auto.text-zinc-800
+       (ui-header (comp/computed (:header props) {:on-signout #(comp/transact! this [(mut/delete-root-user nil)]) :user user}))
+       (ui-quiz (:quiz props))))
