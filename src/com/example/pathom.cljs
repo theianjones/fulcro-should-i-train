@@ -6,7 +6,8 @@
    [com.wsscode.pathom.core :as p]
    [com.wsscode.pathom.connect :as pc]
    [com.example.supabase :refer [get-user-from-client client]]
-   [clojure.set :as set]))
+   [clojure.set :as set]
+   [com.example.data :refer [quizzes]]))
 
 (pc/defresolver index-explorer
   "This resolver is necessary to make it possible to use 'Load index' in Fulcro Inspect - EQL"
@@ -33,14 +34,35 @@
 (pc/defresolver user-authenticated? [env {:keys [current-user]}]
   {::pc/input #{:current-user}
    ::pc/output [:user/authenticated?]}
-  (prn current-user (-> current-user
-                        :user/id
-                        nil?
-                        not))
   {:user/authenticated? (-> current-user
                             :user/id
                             nil?
                             not)})
+
+(def readiness-id "375623e0-92dd-4815-b507-4d577a55f37c")
+
+(defn quiz-by-id* [id]
+  (first (filter #(= id (:quiz/id %)) quizzes)))
+
+#_(defn parse-quiz [id]
+    (let [quiz (first (filter #(= id (get % :id)) quizzes))
+          questions (:questions quiz)]
+      {:quiz/id id :quiz/version (:version quiz)
+       :questions (map (fn [q]
+                         {:question/id (:id q)
+                          :question/label (:label q)
+                          :question/options (map (fn [o]
+                                                   {:option/label (:label o)
+                                                    :option/value (:value o)}) (:options q))}) questions)}))
+
+(pc/defresolver quiz-by-id [_ {id :quiz/id}]
+  {::pc/input #{:quiz/id}
+   ::pc/output [:quiz/id :quiz/version
+                {:quiz/questions [:question/id :question/label
+                                  {:question/options [:option/label :option/value]}]}]}
+  (tap> (quiz-by-id* id))
+  (prn "wow nice" id (quiz-by-id* id))
+  (quiz-by-id* id))
 
 (pc/defresolver current-user
   [env _]
@@ -66,7 +88,7 @@
 
 (def my-resolvers-and-mutations
   "Add any resolvers you make to this list (and reload to re-create the parser)"
-  [index-explorer create-random-thing i-fail person current-user user-authenticated?])
+  [index-explorer create-random-thing i-fail person current-user user-authenticated? quiz-by-id])
 
 (defn new-parser
   "Create a new Pathom parser with the necessary settings"

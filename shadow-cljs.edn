@@ -17,15 +17,14 @@
                                                  holyjak.fulcro-troubleshooting ; optional, to find mistakes faster
                                                  com.fulcrologic.fulcro.inspect.preload
                                                  com.fulcrologic.fulcro.inspect.dom-picker-preload]
-                                    :http-root   "resources/public/" ;; Must be set to infer default purge targets.
-                                    :http-port   3000}
-                                    :tailwind/output "resources/public/css/main.css"
-                                    :after-load com.example.client/refresh}}
-            #_#_:workspaces {:target     nubank.workspaces.shadow-cljs.target
-                             :ns-regexp  "-(test|ws)$"
-                             :output-dir "resources/public/workspaces/js"
-                             :asset-path "/workspaces/js"
-                             :devtools   {:preloads           [com.fulcrologic.fulcro.inspect.preload]
-                                          :http-root          "resources/public/workspaces"
-                                          :http-port          8023
-                                          :http-resource-root "."}}}}
+                                    :http-root   "resources/public"} ;; Must be set to infer default purge targets.
+                       :tailwind/output "resources/public/css/main.css"
+                       :after-load com.example.client/refresh}}
+ #_#_:workspaces {:target     nubank.workspaces.shadow-cljs.target
+                  :ns-regexp  "-(test|ws)$"
+                  :output-dir "resources/public/workspaces/js"
+                  :asset-path "/workspaces/js"
+                  :devtools   {:preloads           [com.fulcrologic.fulcro.inspect.preload]
+                               :http-root          "resources/public/workspaces"
+                               :http-port          8023
+                               :http-resource-root "."}}}
