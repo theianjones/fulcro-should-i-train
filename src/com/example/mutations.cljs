@@ -21,6 +21,7 @@
           (swap! state assoc :root/user {:user/authenticated? false})))
 
 (def readiness-ident [:component/id :readiness])
+
 (defn readiness-class [] (comp/registry-key->class :com.example.ui/ReadinessForm))
 
 (defn clear-readiness-form*
@@ -34,3 +35,10 @@
 (defmutation clear-readiness-form [_]
   (action [{:keys [state]}]
           (swap! state clear-readiness-form*)))
+
+;; implement this when we want redo
+#_(defmutation use-quiz-form [{:quiz/keys [id]}]
+    (action [{:keys [state]}]
+            (swap! state (fn [s]
+                           (-> s
+                               (fs/add-form-config* ui/Quiz [:quiz/id id]))))))

@@ -10,7 +10,7 @@
    [com.fulcrologic.fulcro.raw.components :as rc]
    [com.fulcrologic.fulcro.mutations :as m :refer [defmutation]]
    [com.fulcrologic.fulcro.data-fetch :as df]
-   [com.fulcrologic.fulcro.dom :as dom :refer [button div form h1 h2 h3 input label li ol p ul select option]]
+   [com.fulcrologic.fulcro.dom :as dom :refer [button div form h1 h2 form h3 input label li ol p ul select option]]
    [com.example.supabase :refer [github-signin github-signout]]
    [com.example.data :refer [readiness-data]]))
 
@@ -36,58 +36,49 @@
 (defn field [{:keys [label valid? error-message input-class id] :as props}]
   (let [input-props (-> props
                         (dissoc :label :valid? :error-message :input-class :options))]
-    (div :.ui.field
-         (dom/label {:htmlFor id} label)
-         (input-class input-props)
-         (dom/div :.ui.error.message {:classes [(when valid? "hidden")]}
-                  error-message))))
+    (div
+     (dom/label {:htmlFor label} label)
+     (input-class input-props)
+     (dom/div {:classes [(when valid? "hidden")]}
+              error-message))))
 
-(def t (-> readiness-data
-           :questions
-           first))
+(defsc Question [this {:question/keys [id label options]}]
+  {:query [:question/id
+           :question/label
+           :ui/selected
+           {:question/options [:option/label
+                               :option/value]}]
+   :ident (fn [] [:question/id id])
+   :initial-state {}}
+  (div :.mb-4
+       (h2 :.text-lg label)
+       (map (fn [o]
+              (field {:input-class  input
+                      :name         id
+                      :label        (:option/label o)
+                      :value        (str (:option/value o))
+                      :id           (:option/label o)
+                      :key          (:option/value o)
+                      :type         "radio"
+                      :autoComplete "off"
+                      :onChange     #(m/set-integer! this :ui/selected :event %)}))
+            options)))
 
-#_[{[:quiz/id "375623e0-92dd-4815-b507-4d577a55f37c"]
-    [:quiz/version :quiz/id :quiz/label
-     {:quiz/questions [:question/id :question/label
-                       {:question/options [:option/label :option/value]}]}]}]
+(def ui-question (comp/factory Question {:keyfn :question/id}))
 
 (defsc Quiz [this {:quiz/keys [version id label questions]}]
   {:query [:quiz/version :quiz/id :quiz/label
-           {:quiz/questions [:question/id
-                             :question/label
-                             {:question/options [:option/label
-                                                 :option/value]}]}
+           {:quiz/questions (comp/get-query Question)}
            fs/form-config-join]
    :ident (fn [] [:quiz/id id])
-   :initial-state {}}
-  (div
-   (div :.flex.items-center.gap-1.mb3
-        (h2 :.text-lg.text-zinc-800 label)
-        (p :.text-gray-500 "v" version))
-   (map (fn [q]
-          (div {:key  (:question/id q)}
-               (h2 (:question/label q))
-               (map (fn [o]
-                      (field {:input-class dom/input
-                              :name (:question/id q)
-                              :label (:option/label o)
-                              :value (:option/value o)
-                              :id (:option/value o)
-                              :key (:option/value o)
-                              :type "radio"
-                              :autoComplete "off"}))
-                    (:question/options q))))
-        questions)
-
-   #_(field {:input-class   select
-             :options       (:options t)
-             :label         (:value t)
-             :value         (or trained (-> t
-                                            :options
-                                            first
-                                            :score))
-             :autoComplete  "off"
-             :onChange      #(m/set-integer! this :readiness/trained :event %)})))
+   :initial-state {:quiz/questions []}}
+  (when id
+    (div
+     (div :.flex.items-center.gap-1.mb3
+          (h2 :.text-xl.text-zinc-800 label)
+          (p :.text-gray-500 "v" version))
+     (dom/form
+      (map ui-question questions)))))
 
 (def ui-quiz (comp/factory Quiz {:keyfn :quiz/id}))
 
@@ -97,7 +88,8 @@
            [df/marker-table :load-user]
            {:header (comp/get-query Header)}
            {:quiz (comp/get-query Quiz)}]
-   :initial-state {:root/user {} :header {}}}
+   :initial-state {:root/user {} :header {} :quiz {}}}
   (div :.container.mx-auto.text-zinc-800
        (ui-header (comp/computed (:header props) {:on-signout #(comp/transact! this [(mut/delete-root-user nil)]) :user user}))
-       (ui-quiz (:quiz props))))
+       (when (:quiz props)
+         (ui-quiz (:quiz props)))))
