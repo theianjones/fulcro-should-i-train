@@ -1,15 +1,18 @@
 (ns com.example.ui
   (:require
-   [com.example.mutations :as mut]
+   [com.example.mutations :as mut :refer [clear-readiness-form readiness-ident]]
+   [com.fulcrologic.fulcro.algorithms.form-state :as fs]
    [com.fulcrologic.fulcro.algorithms.merge :as merge]
    [com.fulcrologic.fulcro.algorithms.tempid :as tempid]
    [com.fulcrologic.fulcro.algorithms.data-targeting :as targeting]
    [com.fulcrologic.fulcro.algorithms.normalized-state :as norm]
    [com.fulcrologic.fulcro.components :as comp :refer [defsc transact!]]
    [com.fulcrologic.fulcro.raw.components :as rc]
+   [com.fulcrologic.fulcro.mutations :as m :refer [defmutation]]
    [com.fulcrologic.fulcro.data-fetch :as df]
-   [com.fulcrologic.fulcro.dom :as dom :refer [button div form h1 h2 h3 input label li ol p ul]]
-   [com.example.supabase :refer [github-signin github-signout]]))
+   [com.fulcrologic.fulcro.dom :as dom :refer [button div form h1 h2 form h3 input label li ol p ul select option]]
+   [com.example.supabase :refer [github-signin github-signout]]
+   [com.example.data :refer [readiness-data]]))
 
 (defsc User [_ _]
   {:query [:user/avatar-url :user/email :user/id :user/name :user/username :user/authenticated?]})
@@ -30,24 +33,63 @@
 
 (def ui-header (comp/factory Header))
 
+(defn field [{:keys [label valid? error-message input-class id] :as props}]
+  (let [input-props (-> props
+                        (dissoc :label :valid? :error-message :input-class :options))]
+    (div
+     (dom/label {:htmlFor label} label)
+     (input-class input-props)
+     (dom/div {:classes [(when valid? "hidden")]}
+              error-message))))
+
+(defsc Question [this {:question/keys [id label options]}]
+  {:query [:question/id
+           :question/label
+           :ui/selected
+           {:question/options [:option/label
+                               :option/value]}]
+   :ident (fn [] [:question/id id])
+   :initial-state {}}
+  (div :.mb-4
+       (h2 :.text-lg label)
+       (map (fn [o]
+              (field {:input-class  input
+                      :name         id
+                      :label        (:option/label o)
+                      :value        (str (:option/value o))
+                      :id           (:option/label o)
+                      :key          (:option/value o)
+                      :type         "radio"
+                      :autoComplete "off"
+                      :onChange     #(m/set-integer! this :ui/selected :event %)}))
+            options)))
+
+(def ui-question (comp/factory Question {:keyfn :question/id}))
+
+(defsc Quiz [this {:quiz/keys [version id label questions]}]
+  {:query [:quiz/version :quiz/id :quiz/label
+           {:quiz/questions (comp/get-query Question)}
+           fs/form-config-join]
+   :ident (fn [] [:quiz/id id])
+   :initial-state {:quiz/questions []}}
+  (when id
+    (div
+     (div :.flex.items-center.gap-1.mb3
+          (h2 :.text-xl.text-zinc-800 label)
+          (p :.text-gray-500 "v" version))
+     (dom/form
+      (map ui-question questions)))))
+
+(def ui-quiz (comp/factory Quiz {:keyfn :quiz/id}))
+
 (defsc Root [this {:root/keys [user] :as props}]
   {:query [[df/marker-table :load-progress] :new-thing
            {:root/user (comp/get-query User)}
            [df/marker-table :load-user]
-           {:header (comp/get-query Header)}]
-   :initial-state {:root/user {} :header {}}}
-  (div
-   (ui-header (comp/computed (:header props) {:on-signout #(comp/transact! this [(mut/delete-root-user nil)]) :user user}))
-   (p (str "Hello " (or (:user/name user) "from the ui/Root component") "!"))
-   (div {:style {:border "1px dashed", :margin "1em", :padding "1em"}}
-        (p "Invoke a load! that fails and display the error:")
-        (when-let [m (get props [df/marker-table :load-progress])]
-          (dom/p "Progress marker: " (str m)))
-        (button {:onClick #(df/load! this :i-fail (rc/nc '[*]) {:marker :load-progress})} "I fail!"))
-   (div {:style {:border "1px dashed", :margin "1em", :padding "1em"}}
-        (p "Simulate creating a new thing with server-assigned ID, leveraging Fulcro's tempid support:")
-        (button {:onClick #(let [tmpid (tempid/tempid)]
-                             (comp/transact! this [(mut/create-random-thing {:tmpid tmpid})]))}
-                "I create!")
-        (when-let [things (:new-thing props)]
-          (p (str "Created a thing with the ID: " (first (keys things))))))))
+           {:header (comp/get-query Header)}
+           {:quiz (comp/get-query Quiz)}]
+   :initial-state {:root/user {} :header {} :quiz {}}}
+  (div :.container.mx-auto.text-zinc-800
+       (ui-header (comp/computed (:header props) {:on-signout #(comp/transact! this [(mut/delete-root-user nil)]) :user user}))
+       (when (:quiz props)
+         (ui-quiz (:quiz props)))))
