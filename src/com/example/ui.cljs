@@ -73,14 +73,18 @@
            {:quiz/questions (comp/get-query Question)}
            fs/form-config-join]
    :ident (fn [] [:quiz/id id])
-   :initial-state {:quiz/questions []}}
+   :initial-state {}}
   (when id
     (div
      (div :.flex.items-center.gap-1.mb3
           (h2 :.text-3xl.text-gray-100.mb-2 label)
           (p :.text-gray-100 "v" version))
      (dom/form
-      (map ui-question questions)))))
+      (map ui-question questions)
+      (button :.text-grey-100.bg-gray-700.p-3.rounded.hover:bg-gray-900
+              {:onClick (fn [evt]
+                          (.preventDefault evt)
+                          (comp/transact! this [(mut/submit-form! {:quiz/id id})]))} "Submit")))))
 
 (def ui-quiz (comp/factory Quiz {:keyfn :quiz/id}))
 
@@ -90,7 +94,7 @@
            [df/marker-table :load-user]
            {:header (comp/get-query Header)}
            {:quiz (comp/get-query Quiz)}]
-   :initial-state {:root/user {} :header {} :quiz {}}}
+   :initial-state {:root/user {} :header {}}}
   (div :.container.mx-auto.text-gray-100
        (ui-header (comp/computed (:header props) {:on-signout #(comp/transact! this [(mut/delete-root-user nil)]) :user user}))
        (when (:quiz props)
