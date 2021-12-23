@@ -22,14 +22,14 @@
    :ident (fn [] [:component/id :header])
    :initial-state {}}
   (let [load-user (get props [df/marker-table :load-progress])]
-    (div :.flex.justify-between.items-center
-         (div :.text-zinc-800 "Should I Train?")
+    (div :.flex.justify-between.items-center.my-4
+         (div :.text-grey-100 "Should I Train?")
          (when-not load-user
            (div :.flex.flex-end
                 (when (:user/authenticated? user) (div :.flex
-                                                       (p :.mr-2 (str "Hello " (or (:user/name user) "from the ui/Root component") "!"))
-                                                       (button {:onClick #(on-signout)} "Sign out")))
-                (when (not (:user/authenticated? user)) (button {:onClick #(github-signin)} "Sign in with GitHub")))))))
+                                                       (p :.mr-2.text-grey-100 (str "Hello " (or (:user/name user) "from the ui/Root component") "!"))
+                                                       (button :.text-grey-100 {:onClick #(on-signout)} "Sign out")))
+                (when (not (:user/authenticated? user)) (button :.text-grey-100 {:onClick #(github-signin)} "Sign in with GitHub")))))))
 
 (def ui-header (comp/factory Header))
 
@@ -37,21 +37,23 @@
   (let [input-props (-> props
                         (dissoc :label :valid? :error-message :input-class :options))]
     (div
-     (dom/label {:htmlFor label} label)
+     (dom/label :.relative.block.bg-white.border.rounded-lg.shadow-sm.px-6.py-4.cursor-pointer.sm:flex.sm:justify-between.focus:outline-none.text-gray-700 {:htmlFor label} label)
      (input-class input-props)
      (dom/div {:classes [(when valid? "hidden")]}
               error-message))))
 
-(defsc Question [this {:question/keys [id label options]}]
+(defsc Question [this {:question/keys [id label byline options]}]
   {:query [:question/id
            :question/label
+           :question/byline
            :ui/selected
            {:question/options [:option/label
                                :option/value]}]
    :ident (fn [] [:question/id id])
    :initial-state {}}
-  (div :.mb-4
-       (h2 :.text-lg label)
+  (div :.mb-4.p-4.bg-gray-700.rounded.max-w-fit
+       (h2 :.text-xl.text-gray-100 label)
+       (p :.text-gray-300.mb-2.italic byline)
        (map (fn [o]
               (field {:input-class  input
                       :name         id
@@ -75,8 +77,8 @@
   (when id
     (div
      (div :.flex.items-center.gap-1.mb3
-          (h2 :.text-xl.text-zinc-800 label)
-          (p :.text-gray-500 "v" version))
+          (h2 :.text-3xl.text-gray-100.mb-2 label)
+          (p :.text-gray-100 "v" version))
      (dom/form
       (map ui-question questions)))))
 
@@ -89,7 +91,7 @@
            {:header (comp/get-query Header)}
            {:quiz (comp/get-query Quiz)}]
    :initial-state {:root/user {} :header {} :quiz {}}}
-  (div :.container.mx-auto.text-zinc-800
+  (div :.container.mx-auto.text-gray-100
        (ui-header (comp/computed (:header props) {:on-signout #(comp/transact! this [(mut/delete-root-user nil)]) :user user}))
        (when (:quiz props)
          (ui-quiz (:quiz props)))))
