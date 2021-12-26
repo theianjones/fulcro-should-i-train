@@ -22,14 +22,16 @@
    :ident (fn [] [:component/id :header])
    :initial-state {}}
   (let [load-user (get props [df/marker-table :load-progress])]
-    (div :.flex.justify-between.items-center.my-4
+    (div :.flex.justify-between.items-center.my-4.mx-4.lg:mx-0
          (div :.text-grey-100 "Should I Train?")
          (when-not load-user
            (div :.flex.flex-end
-                (when (:user/authenticated? user) (div :.flex
-                                                       (p :.mr-2.text-grey-100 (str "Hello " (or (:user/name user) "from the ui/Root component") "!"))
-                                                       (button :.text-grey-100 {:onClick #(on-signout)} "Sign out")))
-                (when (not (:user/authenticated? user)) (button :.text-grey-100 {:onClick #(github-signin)} "Sign in with GitHub")))))))
+                (when (:user/authenticated? user)
+                  (div :.flex
+                       (p :.mr-2.text-grey-100 (str "Hello " (or (:user/name user) "from the ui/Root component") "!"))
+                       (button :.text-grey-100 {:onClick #(on-signout)} "Sign out")))
+                (when (not (:user/authenticated? user))
+                  (button :.text-grey-100 {:onClick #(github-signin)} "Sign in with GitHub")))))))
 
 (def ui-header (comp/factory Header))
 
@@ -91,7 +93,26 @@
            {:header (comp/get-query Header)}
            {:quiz (comp/get-query Quiz)}]
    :initial-state {:root/user {} :header {} :quiz {}}}
-  (div :.container.mx-auto.text-gray-100
+  (div :.text-gray-100
        (ui-header (comp/computed (:header props) {:on-signout #(comp/transact! this [(mut/delete-root-user nil)]) :user user}))
-       (when (:quiz props)
-         (ui-quiz (:quiz props)))))
+       (when (not (:user/authenticated? user))
+         (div :.grid.md:grid-cols-2.grid-cols-1
+              (div :.md:grid-span-1.md:min-h-screen.w-full.py-8.bg-gray-600.rounded.mb-16
+                   (div :.flex.flex-col.place-content-center.h-full.mb-8
+                        (h1 :.md:mb-24.mb-12.self-center.w-96.text-3xl "Track how you feel so you know when to train.")
+                        (button :.self-center.text-grey-100.font-bold.bg-blue-600.py-3.px-8.rounded-md.border.border-transparent.hover:bg-indigo-700.h-12 {:onClick #(github-signin)} "Sign in with GitHub")))
+
+              (div :.md:grid-span-1.md:m-auto.mx-4
+                   (div :.flex.flex-col.text-grey-100.max-w-lg.h-full.place-content-center
+                        (h2 :.text-2xl.font-medium.mb-8.px-2 "Your body is giving you the signals you need...")
+                        (p :.max-w-prose.mb-5.px-4 "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.")
+                        (p :.max-w-prose.mb-5.px-4 "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.")
+                        (p :.max-w-prose.mb-5.px-4 "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.")
+
+                        (h2 :.text-2xl.font-medium.mb-8.px-2 "No fancy gear required, just answer these questions")
+
+                        (p :.max-w-prose.mb-5.px-4 "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.")
+                        (p :.max-w-prose.mb-5.px-4 "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. ")))))
+       (when (:user/authenticated? user)
+         (when (:quiz props)
+           (ui-quiz (:quiz props))))))
