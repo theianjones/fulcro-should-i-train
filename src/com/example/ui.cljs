@@ -84,7 +84,7 @@
       (button :.text-grey-100.bg-gray-700.p-3.rounded.hover:bg-gray-900
               {:onClick (fn [evt]
                           (.preventDefault evt)
-                          (comp/transact! this [(mut/submit-form! {:quiz/id id})]))} "Submit")))))
+                          (comp/transact! this [(mut/create-readiness-response {:quiz/id id})]))} "Submit")))))
 
 (def ui-quiz (comp/factory Quiz {:keyfn :quiz/id}))
 
