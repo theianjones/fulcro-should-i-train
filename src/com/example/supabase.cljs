@@ -1,7 +1,9 @@
 (ns com.example.supabase
   (:require ["@supabase/supabase-js" :refer (createClient)]
             [com.example.utils :refer [obj->clj]]
-            [clojure.walk :as w]))
+            [clojure.walk :as w]
+            [cljs.core.async :refer [go]]
+            [cljs.core.async.interop :refer-macros [<p!]]))
 
 (def api-url "https://dbezknjgkanktnzqbxwl.supabase.co")
 
@@ -24,3 +26,28 @@
       .-auth
       .user
       (js->clj :keywordize-keys true)))
+
+;; .from('cities')
+;;   .insert([
+;;     { name: 'The Shire', country_id: 554 },
+;;     { name: 'Rohan', country_id: 555 },
+;;   ])
+(defn insert-response [{:keys [response/total user/id]}]
+  (go
+    (try
+      (<p! (-> @client
+               (.from "response_scores")
+               (.insert #js [#js {"total" total "user_id" id}])))
+      (catch js/Error err (js/console.log (ex-cause err))))))
+
+(defn insert-response-answers [{:keys [answers] response-id :response/id}]
+  (go
+    (try
+      (<p! (-> @client
+               (.from "question_answers")
+               (.insert (clj->js (map (fn [answer]
+                                        #js {"response_id" response-id
+                                             "score" (:answer/score answer)
+                                             "question_id" (:question/id answer)
+                                             "user_id" (:user/id answer)}) answers)))))
+      (catch js/Error err (js/console.log (ex-cause err))))))

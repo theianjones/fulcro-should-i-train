@@ -5,9 +5,10 @@
   (:require
    [com.wsscode.pathom.core :as p]
    [com.wsscode.pathom.connect :as pc]
-   [com.example.supabase :refer [get-user-from-client client]]
+   [com.example.supabase :refer [get-user-from-client client insert-response insert-response-answers]]
    [clojure.set :as set]
-   [com.example.data :refer [quizzes]]))
+   [com.example.data :refer [quizzes]]
+   [cljs.core.async :refer [go <!]]))
 
 (pc/defresolver index-explorer
   "This resolver is necessary to make it possible to use 'Load index' in Fulcro Inspect - EQL"
@@ -18,12 +19,6 @@
    (-> (get env ::pc/indexes)
        (update ::pc/index-resolvers #(into {} (map (fn [[k v]] [k (dissoc v ::pc/resolve)])) %))
        (update ::pc/index-mutations #(into {} (map (fn [[k v]] [k (dissoc v ::pc/mutate)])) %)))})
-
-(pc/defresolver i-fail
-  [_ _]
-  {::pc/input  #{}
-   ::pc/output [:i-fail]}
-  (throw (ex-info "Fake resolver error" {})))
 
 (pc/defresolver person
   [_ {id :person/id}]
@@ -43,17 +38,6 @@
 
 (defn quiz-by-id* [id]
   (first (filter #(= id (:quiz/id %)) quizzes)))
-
-#_(defn parse-quiz [id]
-    (let [quiz (first (filter #(= id (get % :id)) quizzes))
-          questions (:questions quiz)]
-      {:quiz/id id :quiz/version (:version quiz)
-       :questions (map (fn [q]
-                         {:question/id (:id q)
-                          :question/label (:label q)
-                          :question/options (map (fn [o]
-                                                   {:option/label (:label o)
-                                                    :option/value (:value o)}) (:options q))}) questions)}))
 
 (pc/defresolver quiz-by-id [_ {id :quiz/id}]
   {::pc/input #{:quiz/id}
@@ -77,20 +61,27 @@
     {:current-user
      (conj {:user/id user-id} renamed-meta)}))
 
-(pc/defmutation create-random-thing [env {:keys [tmpid] :as params}]
-  ;; Fake generating a new server-side entity with
-  ;; a server-decided actual ID
-  ;; NOTE: To match with the Fulcro-sent mutation, we
-  ;; need to explicitly name it to use the same symbol
-  {::pc/sym 'com.example.mutations/create-random-thing
-   ::pc/params [:tempid]
+(pc/defmutation create-readiness-response [env {user-id :user/id response-total :response/total response-id :response/id answers :answer/id :as params}]
+  {::pc/sym 'com.example.mutations/create-readiness-response
+   ::pc/params [:user/id :response/id :response/total {:answer/id [:answer/score :question/id :user/id]}]
    ::pc/output [:tempids]}
-  (println "SERVER: Simulate creating a new thing with real DB id 123" tmpid)
-  {:tempids {tmpid 123}})
+  (go
+    (let [response (-> (<! (insert-response {:user/id user-id :response/total response-total}))
+                       (js->clj :keywordize-keys true)
+                       :data
+                       first)
+          reified-answers (-> (<! (insert-response-answers {:answers answers :response/id (:id response)}))
+                              (js->clj :keywordize-keys true)
+                              :data)
+          temp-id->id (reduce (fn [ids curr]
+                                (tap> curr)
+                                (merge ids {(:answer/id (first (filter #(= (:question/id %) (:question_id curr)) answers))) (:id curr)})) {response-id (:id response)}
+                              reified-answers)]
+      {:tempids temp-id->id})))
 
 (def my-resolvers-and-mutations
   "Add any resolvers you make to this list (and reload to re-create the parser)"
-  [index-explorer create-random-thing i-fail person current-user user-authenticated? quiz-by-id readiness-quiz])
+  [index-explorer i-fail person current-user user-authenticated? quiz-by-id readiness-quiz create-readiness-response])
 
 (defn new-parser
   "Create a new Pathom parser with the necessary settings"
