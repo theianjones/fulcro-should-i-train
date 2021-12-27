@@ -24,7 +24,6 @@
                                        :marker :load-user
                                        :post-action (fn [{:keys [state]}]
                                                       (let [authenticated? (get-in @state [:component/id :main :main/user :user/authenticated?])]
-                                                        (prn authenticated?)
                                                         (if authenticated?
                                                           (dr/change-route! app ["quiz" readiness-quiz-id])
                                                           (dr/change-route! app ["login"]))))})

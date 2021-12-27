@@ -141,7 +141,6 @@
            [::uism/asm-id ::TopRouter]]
    :ident (fn [] [:component/id :main])
    :initial-state {:main/router {} :main/header {} :main/user {}}}
-  (tap> props)
   (let [top-router-state (or (uism/get-active-state this ::TopRouter) :initial)]
     (if (= :initial top-router-state)
       nil
