@@ -6,9 +6,11 @@
    [com.fulcrologic.fulcro.algorithms.tempid :as tempid]
    [com.fulcrologic.fulcro.algorithms.data-targeting :as targeting]
    [com.fulcrologic.fulcro.algorithms.normalized-state :as norm]
+   [com.fulcrologic.fulcro.routing.dynamic-routing :as dr]
    [com.fulcrologic.fulcro.components :as comp :refer [defsc transact!]]
    [com.fulcrologic.fulcro.raw.components :as rc]
    [com.fulcrologic.fulcro.mutations :as m :refer [defmutation]]
+   [com.fulcrologic.fulcro.ui-state-machines :as uism]
    [com.fulcrologic.fulcro.data-fetch :as df]
    [com.fulcrologic.fulcro.dom :as dom :refer [button div form h1 h2 form h3 input label li ol p ul select option]]
    [com.example.supabase :refer [github-signin github-signout]]
@@ -29,7 +31,8 @@
                 (when (:user/authenticated? user)
                   (div :.flex
                        (p :.mr-2.text-grey-100 (str "Hello " (or (:user/name user) "from the ui/Root component") "!"))
-                       (button :.text-grey-100 {:onClick #(on-signout)} "Sign out")))
+                       (button :.text-grey-100 {:onClick #((on-signout)
+                                                           (dr/change-route! this ["login"]))} "Sign out")))
                 (when (not (:user/authenticated? user))
                   (button :.text-grey-100 {:onClick #(github-signin)} "Sign in with GitHub")))))))
 
@@ -77,7 +80,12 @@
            {:quiz/questions (comp/get-query Question)}
            fs/form-config-join]
    :ident (fn [] [:quiz/id id])
-   :initial-state {}}
+   :initial-state {}
+   :route-segment ["quiz" :quiz-id]
+   :will-enter (fn [app {:keys [quiz-id]}]
+                 (dr/route-deferred [:quiz/id quiz-id]
+                                    #(df/load! app [:quiz/id quiz-id] Quiz {:post-mutation `dr/target-ready
+                                                                            :post-mutation-params {:target [:quiz/id quiz-id]}})))}
   (when id
     (div
      (div :.flex.items-center.gap-1.mb3
@@ -92,33 +100,58 @@
 
 (def ui-quiz (comp/factory Quiz {:keyfn :quiz/id}))
 
-(defsc Root [this {:root/keys [user] :as props}]
-  {:query [[df/marker-table :load-progress] :new-thing
-           {:root/user (comp/get-query User)}
-           [df/marker-table :load-user]
-           {:header (comp/get-query Header)}
-           {:quiz (comp/get-query Quiz)}]
-   :initial-state {:root/user {} :header {} :quiz {}}}
-  (div :.container.mx-auto.text-gray-100
-       (ui-header (comp/computed (:header props) {:on-signout #(comp/transact! this [(mut/delete-root-user nil)]) :user user}))
-       (when (not (:user/authenticated? user))
-         (div :.grid.md:grid-cols-2.grid-cols-1
-              (div :.md:grid-span-1.md:min-h-screen.w-full.py-8.bg-gray-600.rounded.mb-16
-                   (div :.flex.flex-col.place-content-center.h-full.mb-8
-                        (h1 :.md:mb-24.mb-12.self-center.w-96.text-3xl "Track how you feel so you know when to train.")
-                        (button :.self-center.text-grey-100.font-bold.bg-blue-600.py-3.px-8.rounded-md.border.border-transparent.hover:bg-indigo-700.h-12 {:onClick #(github-signin)} "Sign in with GitHub")))
+(defsc Login [_ _]
+  {:route-segment ["login"]
+   :query []
+   :ident (fn [] [:component/id :login])}
+  (div :.grid.md:grid-cols-2.grid-cols-1
+       (div :.md:grid-span-1.md:min-h-screen.w-full.py-8.bg-gray-600.rounded.mb-16
+            (div :.flex.flex-col.place-content-center.h-full.mb-8
+                 (h1 :.md:mb-24.mb-12.self-center.w-96.text-3xl
+                     "Track how you feel so you know when to train.")
+                 (button :.self-center.text-grey-100.font-bold.bg-blue-600.py-3.px-8.rounded-md.border.border-transparent.hover:bg-indigo-700.h-12
+                         {:onClick #(github-signin)}
+                         "Sign in with GitHub")))
+       (div :.md:grid-span-1.md:m-auto.mx-4
+            (div :.flex.flex-col.text-grey-100.max-w-lg.h-full.place-content-center
+                 (h2 :.text-2xl.font-medium.mb-8.px-2
+                     "Your body is giving you the signals you need...")
+                 (p :.max-w-prose.mb-5.px-4
+                    "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.")
+                 (p :.max-w-prose.mb-5.px-4
+                    "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.")
+                 (p :.max-w-prose.mb-5.px-4
+                    "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.")
+                 (h2 :.text-2xl.font-medium.mb-8.px-2
+                     "No fancy gear required, just answer these questions")
+                 (p :.max-w-prose.mb-5.px-4
+                    "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.")
+                 (p :.max-w-prose.mb-5.px-4
+                    "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.")))))
 
-              (div :.md:grid-span-1.md:m-auto.mx-4
-                   (div :.flex.flex-col.text-grey-100.max-w-lg.h-full.place-content-center
-                        (h2 :.text-2xl.font-medium.mb-8.px-2 "Your body is giving you the signals you need...")
-                        (p :.max-w-prose.mb-5.px-4 "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.")
-                        (p :.max-w-prose.mb-5.px-4 "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.")
-                        (p :.max-w-prose.mb-5.px-4 "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.")
+(dr/defrouter TopRouter [this props]
+  {:router-targets [Login Quiz]})
 
-                        (h2 :.text-2xl.font-medium.mb-8.px-2 "No fancy gear required, just answer these questions")
+(def ui-top-router (comp/factory TopRouter))
 
-                        (p :.max-w-prose.mb-5.px-4 "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.")
-                        (p :.max-w-prose.mb-5.px-4 "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. ")))))
-       (when (:user/authenticated? user)
-         (when (:quiz props)
-           (ui-quiz (:quiz props))))))
+(defsc Main [this {:main/keys [header router user] :as props}]
+  {:query [{:main/router (comp/get-query TopRouter)}
+           {:main/header (comp/get-query Header)}
+           {:main/user   (comp/get-query User)}
+           [::uism/asm-id ::TopRouter]]
+   :ident (fn [] [:component/id :main])
+   :initial-state {:main/router {} :main/header {} :main/user {}}}
+  (let [top-router-state (or (uism/get-active-state this ::TopRouter) :initial)]
+    (if (= :initial top-router-state)
+      nil
+      (div :.container.mx-auto.text-gray-100
+           (ui-header (comp/computed header {:user user
+                                             :on-signout #(comp/transact! this [(mut/delete-root-user nil)])}))
+           (ui-top-router router)))))
+
+(def ui-main (comp/factory Main))
+
+(defsc Root [_ {:root/keys [main]}]
+  {:query         [{:root/main (comp/get-query Main)}]
+   :initial-state {:root/main {}}}
+  (ui-main main))
