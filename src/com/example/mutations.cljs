@@ -16,10 +16,10 @@
 (defmutation delete-root-user [_]
   (action [{:keys [state] :as env}]
           (github-signout)
-          (swap! state assoc :root/user {:user/authenticated? false})))
+          (swap! state assoc-in [:component/id :main :main/user] {:user/authenticated? false})))
 
 (defn submit-form* [state quiz-id]
-  (let [user (:root/user state)
+  (let [user (get-in state [:component/id :main :main/user])
         quiz (get-in state [:quiz/id quiz-id])
         questions (map (fn [q] (get-in state q)) (:quiz/questions quiz))
         response-id (tempid/tempid)
@@ -51,6 +51,10 @@
                                  :response/id ~(:response/id response)
                                  :response/total ~(:response/total response)
                                  :answer/id ~(vals (:answer/id @state))})]))))
+
+(defmutation user-loading [{:keys [value]}]
+  (action [{:keys [state]}]
+          (swap! state assoc :ui/loading-user? value)))
 
 (def readiness-ident [:component/id :readiness])
 

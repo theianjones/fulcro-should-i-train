@@ -81,7 +81,7 @@
 
 (def my-resolvers-and-mutations
   "Add any resolvers you make to this list (and reload to re-create the parser)"
-  [index-explorer i-fail person current-user user-authenticated? quiz-by-id readiness-quiz create-readiness-response])
+  [index-explorer person current-user user-authenticated? quiz-by-id readiness-quiz create-readiness-response])
 
 (defn new-parser
   "Create a new Pathom parser with the necessary settings"
