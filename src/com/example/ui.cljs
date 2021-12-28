@@ -25,9 +25,9 @@
    :initial-state {}}
   (let [load-user (get props [df/marker-table :load-progress])]
     (div :.flex.justify-between.items-center.my-4.mx-4.lg:mx-0
-          (div :.flex
-          (img :.mr-2 {:src "https://res.cloudinary.com/dpspogkzf/image/upload/v1640649667/shoulditrain--logo_sjaews.svg"})
-         (div :.text-grey-100 "shoulditrain.today"))
+         (div :.flex.cursor-pointer {:onClick #(dr/change-route! this (if (:user/authenticated? user) ["dashboard"] ["login"]))}
+              (img :.mr-2 {:src "https://res.cloudinary.com/dpspogkzf/image/upload/v1640649667/shoulditrain--logo_sjaews.svg"})
+              (div :.text-grey-100 "shoulditrain.today"))
          (when-not load-user
            (div :.flex.flex-end
                 (when (:user/authenticated? user)
@@ -131,8 +131,25 @@
                  (p :.max-w-prose.mb-5.px-4
                     "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.")))))
 
+(defsc Dashboard [this {:keys [readiness-quiz]}]
+  {:route-segment ["dashboard"]
+   :query [{:readiness-quiz [:quiz/id]}]
+   :ident (fn [] [:component/id :dashboard])
+   :will-enter (fn [app _]
+                 (dr/route-deferred [:component/id :dashboard]
+                                    #(df/load! app
+                                               [:component/id :dashboard]
+                                               Dashboard
+                                               {:post-mutation `dr/target-ready
+                                                :post-mutation-params {:target [:component/id :dashboard]}})))}
+  (div :.container.flex.flex-col.items-center.mt-10.gap-y-4
+       (h1 :.text-3xl "Find your Readiness score")
+       (button :.text-grey-100.font-bold.bg-blue-600.py-3.px-8.rounded-md.border.border-transparent.hover:bg-indigo-700.h-12
+               {:onClick #(dr/change-route! this ["quiz" (:quiz/id readiness-quiz)])}
+               "Take Quiz")))
+
 (dr/defrouter TopRouter [this props]
-  {:router-targets [Login Quiz]})
+  {:router-targets [Login Quiz Dashboard]})
 
 (def ui-top-router (comp/factory TopRouter))
 

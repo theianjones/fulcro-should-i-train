@@ -25,7 +25,7 @@
                                        :post-action (fn [{:keys [state]}]
                                                       (let [authenticated? (get-in @state [:component/id :main :main/user :user/authenticated?])]
                                                         (if authenticated?
-                                                          (dr/change-route! app ["quiz" readiness-quiz-id])
+                                                          (dr/change-route! app ["dashboard"])
                                                           (dr/change-route! app ["login"]))))})
   (app/mount! app
               (app/root-class app)
