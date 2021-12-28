@@ -12,7 +12,7 @@
    [com.fulcrologic.fulcro.mutations :as m :refer [defmutation]]
    [com.fulcrologic.fulcro.ui-state-machines :as uism]
    [com.fulcrologic.fulcro.data-fetch :as df]
-   [com.fulcrologic.fulcro.dom :as dom :refer [button div form h1 h2 form h3 input label li ol p ul select option]]
+   [com.fulcrologic.fulcro.dom :as dom :refer [button img div form h1 h2 form h3 input label li ol p ul select option]]
    [com.example.supabase :refer [github-signin github-signout]]
    [com.example.data :refer [readiness-data]]))
 
@@ -25,7 +25,9 @@
    :initial-state {}}
   (let [load-user (get props [df/marker-table :load-progress])]
     (div :.flex.justify-between.items-center.my-4.mx-4.lg:mx-0
-         (div :.text-grey-100 "Should I Train?")
+          (div :.flex
+          (img :.mr-2 {:src "https://res.cloudinary.com/dpspogkzf/image/upload/v1640649667/shoulditrain--logo_sjaews.svg"})
+         (div :.text-grey-100 "shoulditrain.today"))
          (when-not load-user
            (div :.flex.flex-end
                 (when (:user/authenticated? user)
