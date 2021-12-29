@@ -7,7 +7,7 @@
   (:require
    [com.fulcrologic.fulcro.algorithms.form-state :as fs]
    [com.fulcrologic.fulcro.algorithms.tempid :as tempid]
-   [com.fulcrologic.fulcro.algorithms.normalized-state :as ns]
+   [com.fulcrologic.fulcro.routing.dynamic-routing :as dr]
    [com.fulcrologic.fulcro.components :as comp]
    [com.fulcrologic.fulcro.mutations :refer [defmutation]]
    [edn-query-language.core :as eql]
@@ -16,10 +16,10 @@
 (defmutation delete-root-user [_]
   (action [{:keys [state] :as env}]
           (github-signout)
-          (swap! state assoc-in [:component/id :main :main/user] {:user/authenticated? false})))
+          (swap! state assoc :root/user {:user/authenticated? false})))
 
 (defn submit-form* [state quiz-id]
-  (let [user (get-in state [:component/id :main :main/user])
+  (let [user (get state :root/user)
         quiz (get-in state [:quiz/id quiz-id])
         questions (map (fn [q] (get-in state q)) (:quiz/questions quiz))
         response-id (tempid/tempid)
@@ -35,7 +35,10 @@
         response {response-id {:response/id response-id
                                :response/total total-score
                                :answer/id (map (fn [a] [:answer/id (key a)]) answers)}}]
-    (merge state {:answer/id answers} {:response/id response})))
+    (merge state
+           {:answer/id answers}
+           {:response/id response}
+           {:root/response [:response/id response-id]})))
 
 (comment
   (def app (com.fulcrologic.fulcro.application/current-state com.example.app/app))
@@ -50,7 +53,9 @@
                                 {:user/id ~(get-in @state [:root/user :user/id])
                                  :response/id ~(:response/id response)
                                  :response/total ~(:response/total response)
-                                 :answer/id ~(vals (:answer/id @state))})]))))
+                                 :answer/id ~(vals (:answer/id @state))})])))
+  (ok-action [{:keys [app]}]
+             (dr/change-route! app ["dashboard"])))
 
 (defmutation user-loading [{:keys [value]}]
   (action [{:keys [state]}]

@@ -74,7 +74,6 @@
                               (js->clj :keywordize-keys true)
                               :data)
           temp-id->id (reduce (fn [ids curr]
-                                (tap> curr)
                                 (merge ids {(:answer/id (first (filter #(= (:question/id %) (:question_id curr)) answers))) (:id curr)})) {response-id (:id response)}
                               reified-answers)]
       {:tempids temp-id->id})))

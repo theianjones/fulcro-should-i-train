@@ -20,7 +20,7 @@
   {:query [:user/avatar-url :user/email :user/id :user/name :user/username :user/authenticated?]})
 
 (defsc Header [this props {:keys [on-signout user]}]
-  {:query [[df/marker-table :load-user]]
+  {:query [:header [df/marker-table :load-user]]
    :ident (fn [] [:component/id :header])
    :initial-state {}}
   (let [load-user (get props [df/marker-table :load-progress])]
@@ -131,10 +131,12 @@
                  (p :.max-w-prose.mb-5.px-4
                     "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.")))))
 
-(defsc Dashboard [this {:keys [readiness-quiz]}]
+(defsc Dashboard [this {:keys [readiness-quiz] :root/keys [response]}]
   {:route-segment ["dashboard"]
-   :query [{:readiness-quiz [:quiz/id]}]
+   :query [{:readiness-quiz [:quiz/id]}
+           {[:root/response '_] [:response/total]}]
    :ident (fn [] [:component/id :dashboard])
+   :initial-state {}
    :will-enter (fn [app _]
                  (dr/route-deferred [:component/id :dashboard]
                                     #(df/load! app
@@ -142,35 +144,43 @@
                                                Dashboard
                                                {:post-mutation `dr/target-ready
                                                 :post-mutation-params {:target [:component/id :dashboard]}})))}
-  (div :.container.flex.flex-col.items-center.mt-10.gap-y-4
-       (h1 :.text-3xl "Find your Readiness score")
-       (button :.text-grey-100.font-bold.bg-blue-600.py-3.px-8.rounded-md.border.border-transparent.hover:bg-indigo-700.h-12
-               {:onClick #(dr/change-route! this ["quiz" (:quiz/id readiness-quiz)])}
-               "Take Quiz")))
+  (let [total (:response/total response)]
+    (div :.container.flex.flex-col.items-center.mt-10.gap-y-4
+         (when (nil? total)
+           (comp/fragment
+            (h1 :.text-3xl "Find your Readiness score")
+            (button :.text-grey-100.font-bold.bg-blue-600.py-3.px-8.rounded-md.border.border-transparent.hover:bg-indigo-700.h-12
+                    {:onClick #(dr/change-route! this ["quiz" (:quiz/id readiness-quiz)])}
+                    "Take Quiz")))
+         (when total
+           (comp/fragment
+            (h1 :.text-3xl "Readiness Quiz Reported")
+            (p :.text-4xl total))))))
 
 (dr/defrouter TopRouter [this props]
   {:router-targets [Login Quiz Dashboard]})
 
 (def ui-top-router (comp/factory TopRouter))
 
-(defsc Main [this {:main/keys [header router user] :as props}]
+(defsc Main [this {:main/keys [header router] current-user :root/user}]
   {:query [{:main/router (comp/get-query TopRouter)}
            {:main/header (comp/get-query Header)}
-           {:main/user   (comp/get-query User)}
+           {[:root/user '_] (comp/get-query User)}
            [::uism/asm-id ::TopRouter]]
    :ident (fn [] [:component/id :main])
-   :initial-state {:main/router {} :main/header {} :main/user {}}}
+   :initial-state {:main/router {} :main/header {}}}
   (let [top-router-state (or (uism/get-active-state this ::TopRouter) :initial)]
     (if (= :initial top-router-state)
       nil
       (div :.container.mx-auto.text-gray-100
-           (ui-header (comp/computed header {:user user
+           (ui-header (comp/computed header {:user current-user
                                              :on-signout #(comp/transact! this [(mut/delete-root-user nil)])}))
            (ui-top-router router)))))
 
 (def ui-main (comp/factory Main))
 
-(defsc Root [_ {:root/keys [main]}]
-  {:query         [{:root/main (comp/get-query Main)}]
-   :initial-state {:root/main {}}}
+(defsc Root [_ {:root/keys [main user]}]
+  {:query         [{:root/main (comp/get-query Main)}
+                   {:root/user (comp/get-query User)}]
+   :initial-state {:root/main {} :root/user {}}}
   (ui-main main))
