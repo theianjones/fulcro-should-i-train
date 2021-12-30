@@ -131,10 +131,18 @@
                  (p :.max-w-prose.mb-5.px-4
                     "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.")))))
 
-(defsc Dashboard [this {:keys [readiness-quiz] :root/keys [response]}]
+(defn is-today? [date-str]
+  (let [today (js/Date.)
+        date (js/Date. date-str)]
+    (and (= (.getDate today) (.getDate date))
+         (= (.getMonth today) (.getMonth date))
+         (= (.getFullYear today) (.getFullYear date)))))
+
+(defsc Dashboard [this {:keys [readiness-quiz current-user] :root/keys [response]}]
   {:route-segment ["dashboard"]
    :query [{:readiness-quiz [:quiz/id]}
-           {[:root/response '_] [:response/total]}]
+           {[:root/response '_] [:response/total]}
+           {:current-user [{:responses [:response/id :response/total :response/created-at]}]}]
    :ident (fn [] [:component/id :dashboard])
    :initial-state {}
    :will-enter (fn [app _]
@@ -144,7 +152,9 @@
                                                Dashboard
                                                {:post-mutation `dr/target-ready
                                                 :post-mutation-params {:target [:component/id :dashboard]}})))}
-  (let [total (:response/total response)]
+  (let [todays-response (or response (first (filter (fn [r]
+                                                      (is-today? (:response/created-at r))) (:responses current-user))))
+        total (:response/total todays-response)]
     (div :.container.flex.flex-col.items-center.mt-10.gap-y-4
          (when (nil? total)
            (comp/fragment
