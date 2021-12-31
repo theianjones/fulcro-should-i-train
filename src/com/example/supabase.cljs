@@ -1,7 +1,5 @@
 (ns com.example.supabase
   (:require ["@supabase/supabase-js" :refer (createClient)]
-            [com.example.utils :refer [obj->clj]]
-            [clojure.walk :as w]
             [cljs.core.async :refer [go]]
             [cljs.core.async.interop :refer-macros [<p!]]))
 
@@ -27,11 +25,14 @@
       .user
       (js->clj :keywordize-keys true)))
 
-;; .from('cities')
-;;   .insert([
-;;     { name: 'The Shire', country_id: 554 },
-;;     { name: 'Rohan', country_id: 555 },
-;;   ])
+(defn select-responses [client {:user/keys [id]}]
+  (go (try
+        (<p! (-> @client
+                 (.from "response_scores")
+                 (.select "*")
+                 (.eq "user_id" id)))
+        (catch js/Error err (js/console.log (ex-cause err))))))
+
 (defn insert-response [{:keys [response/total user/id]}]
   (go
     (try

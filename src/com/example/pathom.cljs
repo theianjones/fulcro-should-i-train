@@ -5,7 +5,7 @@
   (:require
    [com.wsscode.pathom.core :as p]
    [com.wsscode.pathom.connect :as pc]
-   [com.example.supabase :refer [get-user-from-client client insert-response insert-response-answers]]
+   [com.example.supabase :refer [get-user-from-client client insert-response insert-response-answers select-responses]]
    [clojure.set :as set]
    [com.example.data :refer [quizzes]]
    [cljs.core.async :refer [go <!]]))
@@ -20,11 +20,18 @@
        (update ::pc/index-resolvers #(into {} (map (fn [[k v]] [k (dissoc v ::pc/resolve)])) %))
        (update ::pc/index-mutations #(into {} (map (fn [[k v]] [k (dissoc v ::pc/mutate)])) %)))})
 
-(pc/defresolver person
-  [_ {id :person/id}]
-  {::pc/input  #{:person/id}
-   ::pc/output [:person/id :person/name]}
-  {:person/id id, :person/name (str "Joe #" id)})
+(pc/defresolver responses [env {:user/keys [id]}]
+  {::pc/input #{:user/id}
+   ::pc/output [{:responses [:response/id :response/total :response/created-at]}]}
+  (go
+    (let [raw (<! (select-responses (::client env) {:user/id id}))
+          rs  (:data (js->clj raw :keywordize-keys true))
+          result (map (fn [r]
+                        (clojure.set/rename-keys r {:id         :response/id
+                                                    :total      :response/total
+                                                    :created_at :response/created-at
+                                                    :user_id    :user/id})) rs)]
+      {:responses result})))
 
 (pc/defresolver user-authenticated? [env {:keys [current-user]}]
   {::pc/input #{:current-user}
@@ -74,14 +81,13 @@
                               (js->clj :keywordize-keys true)
                               :data)
           temp-id->id (reduce (fn [ids curr]
-                                (tap> curr)
                                 (merge ids {(:answer/id (first (filter #(= (:question/id %) (:question_id curr)) answers))) (:id curr)})) {response-id (:id response)}
                               reified-answers)]
       {:tempids temp-id->id})))
 
 (def my-resolvers-and-mutations
   "Add any resolvers you make to this list (and reload to re-create the parser)"
-  [index-explorer person current-user user-authenticated? quiz-by-id readiness-quiz create-readiness-response])
+  [index-explorer current-user user-authenticated? quiz-by-id readiness-quiz create-readiness-response responses])
 
 (defn new-parser
   "Create a new Pathom parser with the necessary settings"

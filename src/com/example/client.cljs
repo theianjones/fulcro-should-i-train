@@ -20,12 +20,12 @@
   (println "Initializing the app...")
   (app/set-root! app ui/Root {:initialize-state? true})
   (dr/initialize! app) ; make ready, if you want to use dynamic routing...
-  (df/load! app :current-user ui/User {:target (targeting/replace-at [:component/id :main :main/user])
+  (df/load! app :current-user ui/User {:target (targeting/replace-at [:root/user])
                                        :marker :load-user
                                        :post-action (fn [{:keys [state]}]
-                                                      (let [authenticated? (get-in @state [:component/id :main :main/user :user/authenticated?])]
+                                                      (let [authenticated? (get-in @state [:root/user :user/authenticated?])]
                                                         (if authenticated?
-                                                          (dr/change-route! app ["quiz" readiness-quiz-id])
+                                                          (dr/change-route! app ["dashboard"])
                                                           (dr/change-route! app ["login"]))))})
   (app/mount! app
               (app/root-class app)
