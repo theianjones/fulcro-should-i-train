@@ -40,65 +40,93 @@
 
 (def ui-header (comp/factory Header))
 
-(defn field [{:keys [label valid? error-message input-class id] :as props}]
+(defn field [{:keys [label valid? error-message input-class label-class-name] :as props}]
   (let [input-props (-> props
                         (dissoc :label :valid? :error-message :input-class :options))]
     (div
-     (dom/label :.relative.block.bg-white.border.rounded-lg.shadow-sm.px-6.py-4.cursor-pointer.sm:flex.sm:justify-between.focus:outline-none.text-gray-700
-                {:htmlFor label}
+     (dom/label {:htmlFor label
+                 :className (str "rounded-lg shadow-sm px-6 py-4 cursor-pointer sm:flex sm:justify-between focus:outline-none"
+                                 " "
+                                 label-class-name)}
                 label)
      (input-class input-props)
      (dom/div {:classes [(when valid? "hidden")]}
               error-message))))
 
-(defsc Question [this {:question/keys [id label byline options]}]
+(defsc Question [this {:question/keys [id label byline options] selected :ui/selected}]
   {:query [:question/id
            :question/label
            :question/byline
            :ui/selected
            {:question/options [:option/label
                                :option/value]}]
-   :ident (fn [] [:question/id id])
+   :ident :question/id
    :initial-state {}}
-  (div :.mb-4.p-4.bg-gray-700.rounded.max-w-fit
+  (div :.mb-4.p-4.bg-gray-800.rounded
        (h2 :.text-xl.text-gray-100 label)
        (p :.text-gray-300.mb-2.italic byline)
        (map (fn [o]
-              (field {:input-class  input
-                      :name         id
-                      :label        (:option/label o)
-                      :value        (str (:option/value o))
-                      :id           (:option/label o)
-                      :key          (:option/value o)
-                      :type         "radio"
-                      :autoComplete "off"
-                      :onChange     #(m/set-integer! this :ui/selected :event %)}))
+              (div :.mb-2
+                   (field {:input-class  input
+                           :name         id
+                           :label        (:option/label o)
+                           :value        (str (:option/value o))
+                           :id           (:option/label o)
+                           :key          (:option/value o)
+                           :type         "radio"
+                           :autoComplete "off"
+                           :className    "hidden"
+                           :label-class-name (if (= selected (:option/value o)) "bg-blue-600 text-white" "border bg-white text-gray-700")
+                           :onChange     #(m/set-integer! this :ui/selected :event %)})))
             options)))
 
 (def ui-question (comp/factory Question {:keyfn :question/id}))
 
 (defsc Quiz [this {:quiz/keys [version id label questions]}]
   {:query [:quiz/version :quiz/id :quiz/label
-           {:quiz/questions (comp/get-query Question)}
-           fs/form-config-join]
-   :ident (fn [] [:quiz/id id])
+           {:quiz/questions (comp/get-query Question)}]
+   :ident :quiz/id
+   :initLocalState (fn [_ _] {:current-index 0})
    :initial-state {}
    :route-segment ["quiz" :quiz-id]
    :will-enter (fn [app {:keys [quiz-id]}]
                  (dr/route-deferred [:quiz/id quiz-id]
                                     #(df/load! app [:quiz/id quiz-id] Quiz {:post-mutation `dr/target-ready
                                                                             :post-mutation-params {:target [:quiz/id quiz-id]}})))}
-  (when id
-    (div
-     (div :.flex.items-center.gap-1.mb3
-          (h2 :.text-3xl.text-gray-100.mb-2 label)
-          (p :.text-gray-100 "v" version))
-     (dom/form
-      (map ui-question questions)
-      (button :.text-grey-100.bg-gray-700.p-3.rounded.hover:bg-gray-900
-              {:onClick (fn [evt]
-                          (.preventDefault evt)
-                          (comp/transact! this [(mut/create-readiness-response {:quiz/id id})]))} "Submit")))))
+  (let [current-index  (comp/get-state this :current-index)
+        curr-question  (get questions current-index)
+        value          (:ui/selected curr-question)
+        last-question? (= current-index (dec (count questions)))]
+    (when id
+      (div
+       (div :.flex.items-center.gap-1.mb3.justify-center.mb-8
+            (h2 :.text-3xl.text-gray-100.mb-2 label)
+            (p :.text-gray-100 "v" version))
+       (dom/form :.lg:mx-64
+                 (ui-question curr-question)
+                 (div :.flex.gap-1.flex-row-reverse.justify-between
+                      (when last-question?
+                        (button {:onClick (fn [evt]
+                                            (.preventDefault evt)
+                                            (comp/transact! this [(mut/create-readiness-response {:quiz/id id})]))
+                                 :disabled (nil? value)
+                                 :className (str "p-3 rounded bg-blue-600 text-grey-100 disabled:opacity-75 "
+                                                 (when (not (nil? value)) "hover:bg-blue-800"))}
+                                "Submit"))
+                      (when (not last-question?)
+                        (button {:onClick (fn [evt]
+                                            (.preventDefault evt)
+                                            (comp/set-state! this {:current-index (inc current-index)}))
+                                 :disabled (nil? value)
+                                 :className (str "p-3 rounded bg-blue-600 text-grey-100 disabled:opacity-75 "
+                                                 (when (not (nil? value)) "hover:bg-blue-800"))}
+                                "Next Question"))
+                      (when (not (zero? current-index))
+                        (button {:onClick (fn [evt]
+                                            (.preventDefault evt)
+                                            (comp/set-state! this {:current-index (dec current-index)}))
+                                 :className (str "p-3 rounded text-grey-100 bg-gray-800 hover:bg-gray-800")}
+                                "Back"))))))))
 
 (def ui-quiz (comp/factory Quiz {:keyfn :quiz/id}))
 
@@ -159,7 +187,7 @@
          (when (nil? total)
            (comp/fragment
             (h1 :.text-3xl "Find your Readiness score")
-            (button :.text-grey-100.font-bold.bg-blue-600.py-3.px-8.rounded-md.border.border-transparent.hover:bg-indigo-700.h-12
+            (button :.text-grey-100.font-bold.bg-blue-600.py-3.px-8.rounded-md.border.border-transparent.hover:bg-blue-800.h-12
                     {:onClick #(dr/change-route! this ["quiz" (:quiz/id readiness-quiz)])}
                     "Take Quiz")))
          (when total
